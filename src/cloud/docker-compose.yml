@@ -1,0 +1,73 @@
+# TIG-Stack: MQTT-Broker -> Telegraf -> InfluxDB -> Grafana
+# Start: cp .env.example .env  (Werte anpassen), dann: docker compose up -d
+
+services:
+  influxdb:
+    image: influxdb:2.7
+    restart: unless-stopped
+    ports:
+      - "8086:8086"
+    environment:
+      DOCKER_INFLUXDB_INIT_MODE: setup
+      DOCKER_INFLUXDB_INIT_USERNAME: ${INFLUX_USERNAME:?in .env setzen}
+      DOCKER_INFLUXDB_INIT_PASSWORD: ${INFLUX_PASSWORD:?in .env setzen}
+      DOCKER_INFLUXDB_INIT_ORG: ${INFLUX_ORG:?in .env setzen}
+      DOCKER_INFLUXDB_INIT_BUCKET: ${INFLUX_BUCKET:?in .env setzen}
+      DOCKER_INFLUXDB_INIT_RETENTION: ${INFLUX_RETENTION:-30d}
+      DOCKER_INFLUXDB_INIT_ADMIN_TOKEN: ${INFLUX_TOKEN:?in .env setzen}
+    volumes:
+      - influxdb-data:/var/lib/influxdb2
+      - influxdb-config:/etc/influxdb2
+    healthcheck:
+      test: ["CMD", "influx", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  telegraf:
+    image: telegraf:1.32
+    restart: unless-stopped
+    depends_on:
+      influxdb:
+        condition: service_healthy
+    environment:
+      MQTT_HOST: ${MQTT_HOST:?in .env setzen}
+      MQTT_PORT: ${MQTT_PORT:-1883}
+      MQTT_USERNAME: ${MQTT_USERNAME:?in .env setzen}
+      MQTT_PASSWORD: ${MQTT_PASSWORD:?in .env setzen}
+      INFLUX_TOKEN: ${INFLUX_TOKEN}
+      INFLUX_ORG: ${INFLUX_ORG}
+      INFLUX_BUCKET: ${INFLUX_BUCKET}
+    volumes:
+      - ./telegraf/telegraf.conf:/etc/telegraf/telegraf.conf:ro
+      - ./telegraf/status.star:/etc/telegraf/status.star:ro
+
+  grafana:
+    image: grafana/grafana-oss:11.4.0
+    restart: unless-stopped
+    depends_on:
+      influxdb:
+        condition: service_healthy
+    ports:
+      - "3000:3000"
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:?in .env setzen}
+      # Dashboard ohne Login lesbar, Bearbeiten nur als Admin
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Viewer
+      GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /var/lib/grafana/dashboards/iiot.json
+      GF_ANALYTICS_REPORTING_ENABLED: "false"
+      GF_ANALYTICS_CHECK_FOR_UPDATES: "false"
+      INFLUX_TOKEN: ${INFLUX_TOKEN}
+      INFLUX_ORG: ${INFLUX_ORG}
+      INFLUX_BUCKET: ${INFLUX_BUCKET}
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
+
+volumes:
+  influxdb-data:
+  influxdb-config:
+  grafana-data:
