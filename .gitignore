@@ -1,3 +1,7 @@
+#Konfig mit den Passwörtern
+src/raspi_firmware/settings.toml
+
+#Editor-Dateien
 .vscode/
 .venv/
 *.pyc
@@ -5,6 +9,7 @@ __pycache__/
 .pdm-python
 /.quarto/
 _site/
+
 # PlatformIO / Zugangsdaten
 .pio/
 .env
