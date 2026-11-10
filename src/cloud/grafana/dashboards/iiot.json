@@ -32,13 +32,13 @@
       "type": "stat",
       "title": "Bekannte Geräte (30 Tage)",
       "description": "Anzahl unterschiedlicher Gruppen mit Messwerten oder Statusmeldungen.",
-      "gridPos": { "x": 0, "y": 0, "w": 6, "h": 4 },
+      "gridPos": { "x": 0, "y": 0, "w": 5, "h": 4 },
       "datasource": { "type": "influxdb", "uid": "influxdb" },
       "targets": [
         {
           "refId": "A",
           "datasource": { "type": "influxdb", "uid": "influxdb" },
-          "query": "from(bucket: v.defaultBucket)\n  |> range(start: -30d)\n  |> filter(fn: (r) => r._measurement == \"temperature\" or r._measurement == \"device_status\")\n  |> last()\n  |> keep(columns: [\"group\"])\n  |> group()\n  |> distinct(column: \"group\")\n  |> count()"
+          "query": "from(bucket: v.defaultBucket)\n  |> range(start: -30d)\n  |> filter(fn: (r) => r._measurement == \"temperature\" or r._measurement == \"humidity\" or r._measurement == \"device_status\")\n  |> last()\n  |> keep(columns: [\"group\"])\n  |> group()\n  |> distinct(column: \"group\")\n  |> count()"
         }
       ],
       "fieldConfig": {
@@ -55,7 +55,7 @@
       "type": "stat",
       "title": "Status ok",
       "description": "Geräte, deren letzte Statusmeldung \"ok\" ist.",
-      "gridPos": { "x": 6, "y": 0, "w": 6, "h": 4 },
+      "gridPos": { "x": 5, "y": 0, "w": 5, "h": 4 },
       "datasource": { "type": "influxdb", "uid": "influxdb" },
       "targets": [
         {
@@ -77,13 +77,14 @@
       "id": 3,
       "type": "stat",
       "title": "Aktiv (Messwert < 10 min)",
-      "gridPos": { "x": 12, "y": 0, "w": 6, "h": 4 },
+      "description": "Gruppen mit Temperatur- oder Luftfeuchtemesswert in den letzten 10 Minuten.",
+      "gridPos": { "x": 10, "y": 0, "w": 4, "h": 4 },
       "datasource": { "type": "influxdb", "uid": "influxdb" },
       "targets": [
         {
           "refId": "A",
           "datasource": { "type": "influxdb", "uid": "influxdb" },
-          "query": "from(bucket: v.defaultBucket)\n  |> range(start: -10m)\n  |> filter(fn: (r) => r._measurement == \"temperature\" and r._field == \"value\")\n  |> last()\n  |> group()\n  |> count()"
+          "query": "from(bucket: v.defaultBucket)\n  |> range(start: -10m)\n  |> filter(fn: (r) => (r._measurement == \"temperature\" or r._measurement == \"humidity\") and r._field == \"value\")\n  |> last()\n  |> keep(columns: [\"group\"])\n  |> group()\n  |> distinct(column: \"group\")\n  |> count()"
         }
       ],
       "fieldConfig": {
@@ -99,7 +100,7 @@
       "id": 4,
       "type": "stat",
       "title": "Ø Temperatur (Auswahl, Zeitraum)",
-      "gridPos": { "x": 18, "y": 0, "w": 6, "h": 4 },
+      "gridPos": { "x": 14, "y": 0, "w": 5, "h": 4 },
       "datasource": { "type": "influxdb", "uid": "influxdb" },
       "targets": [
         {
@@ -113,6 +114,29 @@
           "unit": "celsius",
           "decimals": 1,
           "color": { "mode": "fixed", "fixedColor": "purple" }
+        },
+        "overrides": []
+      },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "value", "graphMode": "none" }
+    },
+    {
+      "id": 9,
+      "type": "stat",
+      "title": "Ø Luftfeuchte (Auswahl, Zeitraum)",
+      "gridPos": { "x": 19, "y": 0, "w": 5, "h": 4 },
+      "datasource": { "type": "influxdb", "uid": "influxdb" },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "influxdb", "uid": "influxdb" },
+          "query": "from(bucket: v.defaultBucket)\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"humidity\" and r._field == \"value\")\n  |> filter(fn: (r) => r.group =~ /^${group:regex}$/)\n  |> group()\n  |> mean()"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "humidity",
+          "decimals": 1,
+          "color": { "mode": "fixed", "fixedColor": "blue" }
         },
         "overrides": []
       },
@@ -146,11 +170,40 @@
       }
     },
     {
+      "id": 10,
+      "type": "timeseries",
+      "title": "Luftfeuchte",
+      "gridPos": { "x": 0, "y": 14, "w": 24, "h": 10 },
+      "datasource": { "type": "influxdb", "uid": "influxdb" },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "influxdb", "uid": "influxdb" },
+          "query": "from(bucket: v.defaultBucket)\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"humidity\" and r._field == \"value\")\n  |> filter(fn: (r) => r.group =~ /^${group:regex}$/)\n  |> aggregateWindow(every: v.windowPeriod, fn: mean, createEmpty: false)\n  |> keep(columns: [\"_time\", \"_value\", \"group\"])"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "humidity",
+          "decimals": 1,
+          "min": 0,
+          "max": 100,
+          "displayName": "${__field.labels.group}",
+          "custom": { "lineWidth": 2, "showPoints": "never", "spanNulls": 600000 }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": { "displayMode": "table", "placement": "right", "calcs": ["lastNotNull", "mean", "min", "max"] },
+        "tooltip": { "mode": "multi", "sort": "desc" }
+      }
+    },
+    {
       "id": 6,
       "type": "table",
       "title": "Geräteübersicht",
-      "description": "Letzter Status aus iiot/group/+/status und letzter Messwert je Gruppe (30 Tage).",
-      "gridPos": { "x": 0, "y": 14, "w": 14, "h": 9 },
+      "description": "Letzter Status aus iiot/group/+/status und letzte Messwerte je Gruppe (30 Tage).",
+      "gridPos": { "x": 0, "y": 24, "w": 24, "h": 8 },
       "datasource": { "type": "influxdb", "uid": "influxdb" },
       "targets": [
         {
@@ -162,6 +215,11 @@
           "refId": "B",
           "datasource": { "type": "influxdb", "uid": "influxdb" },
           "query": "from(bucket: v.defaultBucket)\n  |> range(start: -30d)\n  |> filter(fn: (r) => r._measurement == \"temperature\" and r._field == \"value\")\n  |> last()\n  |> group()\n  |> keep(columns: [\"group\", \"_value\", \"_time\"])\n  |> rename(columns: {_value: \"Letzte Temperatur\", _time: \"Letzter Messwert\"})"
+        },
+        {
+          "refId": "C",
+          "datasource": { "type": "influxdb", "uid": "influxdb" },
+          "query": "from(bucket: v.defaultBucket)\n  |> range(start: -30d)\n  |> filter(fn: (r) => r._measurement == \"humidity\" and r._field == \"value\")\n  |> last()\n  |> group()\n  |> keep(columns: [\"group\", \"_value\"])\n  |> rename(columns: {_value: \"Letzte Luftfeuchte\"})"
         }
       ],
       "transformations": [
@@ -169,7 +227,7 @@
         {
           "id": "organize",
           "options": {
-            "indexByName": { "group": 0, "Status": 1, "Letzte Statusmeldung": 2, "Letzte Temperatur": 3, "Letzter Messwert": 4 },
+            "indexByName": { "group": 0, "Status": 1, "Letzte Statusmeldung": 2, "Letzte Temperatur": 3, "Letzte Luftfeuchte": 4, "Letzter Messwert": 5 },
             "renameByName": { "group": "Gruppe" }
           }
         }
@@ -207,6 +265,13 @@
               { "id": "unit", "value": "celsius" },
               { "id": "decimals", "value": 1 }
             ]
+          },
+          {
+            "matcher": { "id": "byName", "options": "Letzte Luftfeuchte" },
+            "properties": [
+              { "id": "unit", "value": "humidity" },
+              { "id": "decimals", "value": 0 }
+            ]
           }
         ]
       },
@@ -215,8 +280,8 @@
     {
       "id": 7,
       "type": "table",
-      "title": "Kennzahlen (Zeitraum)",
-      "gridPos": { "x": 14, "y": 14, "w": 10, "h": 9 },
+      "title": "Kennzahlen Temperatur (Zeitraum)",
+      "gridPos": { "x": 0, "y": 32, "w": 12, "h": 9 },
       "datasource": { "type": "influxdb", "uid": "influxdb" },
       "targets": [
         {
@@ -249,10 +314,46 @@
       "options": { "showHeader": true, "sortBy": [{ "displayName": "Gruppe", "desc": false }] }
     },
     {
+      "id": 11,
+      "type": "table",
+      "title": "Kennzahlen Luftfeuchte (Zeitraum)",
+      "gridPos": { "x": 12, "y": 32, "w": 12, "h": 9 },
+      "datasource": { "type": "influxdb", "uid": "influxdb" },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "influxdb", "uid": "influxdb" },
+          "query": "data = from(bucket: v.defaultBucket)\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"humidity\" and r._field == \"value\")\n  |> filter(fn: (r) => r.group =~ /^${group:regex}$/)\n\nunion(tables: [\n    data |> mean() |> set(key: \"_field\", value: \"Mittelwert\"),\n    data |> min() |> set(key: \"_field\", value: \"Minimum\"),\n    data |> max() |> set(key: \"_field\", value: \"Maximum\"),\n    data |> count() |> toFloat() |> set(key: \"_field\", value: \"Anzahl\"),\n])\n  |> keep(columns: [\"group\", \"_field\", \"_value\"])\n  |> pivot(rowKey: [\"group\"], columnKey: [\"_field\"], valueColumn: \"_value\")\n  |> group()"
+        }
+      ],
+      "transformations": [
+        {
+          "id": "organize",
+          "options": {
+            "indexByName": { "group": 0, "Mittelwert": 1, "Minimum": 2, "Maximum": 3, "Anzahl": 4 },
+            "renameByName": { "group": "Gruppe" }
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": { "unit": "humidity", "decimals": 1 },
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "Anzahl" },
+            "properties": [
+              { "id": "unit", "value": "none" },
+              { "id": "decimals", "value": 0 }
+            ]
+          }
+        ]
+      },
+      "options": { "showHeader": true, "sortBy": [{ "displayName": "Gruppe", "desc": false }] }
+    },
+    {
       "id": 8,
       "type": "state-timeline",
       "title": "Statusverlauf",
-      "gridPos": { "x": 0, "y": 23, "w": 24, "h": 8 },
+      "gridPos": { "x": 0, "y": 41, "w": 24, "h": 8 },
       "datasource": { "type": "influxdb", "uid": "influxdb" },
       "targets": [
         {
