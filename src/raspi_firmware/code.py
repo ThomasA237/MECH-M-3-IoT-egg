@@ -139,7 +139,7 @@ class MqttClient:
             keep_alive=30,
         )
         self.client.will_set(
-            self.status_topic, "offline", qos=1, retain=True
+            self.status_topic, json.dumps({"status": "offline"}), qos=1, retain=True
         )
 
     def connect(self):
@@ -175,7 +175,8 @@ class MqttClient:
         return payload
 
     def publish_status(self, status):
-        self.client.publish(self.status_topic, status, qos=1, retain=True)
+        payload = json.dumps({"status": status})
+        self.client.publish(self.status_topic, payload, qos=1, retain=True)
 
     def loop(self):
         try:
