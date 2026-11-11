@@ -36,30 +36,30 @@ Die Abhängigkeiten werden auf dem Laptop installiert, **nicht auf dem Pico W**.
 
 ## Tests ausführen
 
-Alle Befehle werden im **Repository-Hauptverzeichnis** ausgeführt. Die IP-Adresse `192.168.0.79` ist ein Beispiel; die tatsächliche Adresse steht in der seriellen Konsole des Pico W.
+Alle Befehle werden im **Repository-Hauptverzeichnis** ausgeführt. Die IP-Adresse `172.20.10.2` ist ein Beispiel; die tatsächliche Adresse steht in der seriellen Konsole des Pico W.
 
 **Vollständiger Testlauf (Smoke-Tests, Schemathesis Examples und Coverage):**
 
 ```powershell
-pdm run powershell -ExecutionPolicy Bypass -File .\tests\run_api_tests.ps1 -PicoIP 192.168.0.79
+pdm run powershell -ExecutionPolicy Bypass -File .\tests\run_api_tests.ps1 -PicoIP 172.20.10.2
 ```
 
 **Kurzer Testlauf ohne Coverage:**
 
 ```powershell
-pdm run powershell -ExecutionPolicy Bypass -File .\tests\run_api_tests.ps1 -PicoIP 192.168.0.79 -SkipCoverage
+pdm run powershell -ExecutionPolicy Bypass -File .\tests\run_api_tests.ps1 -PicoIP 172.20.10.2 -SkipCoverage
 ```
 
 **Zusätzlich mit Fuzzing:**
 
 ```powershell
-pdm run powershell -ExecutionPolicy Bypass -File .\tests\run_api_tests.ps1 -PicoIP 192.168.0.79 -IncludeFuzzing
+pdm run powershell -ExecutionPolicy Bypass -File .\tests\run_api_tests.ps1 -PicoIP 172.20.10.2 -IncludeFuzzing
 ```
 
 **Nur die Python-Smoke-Tests:**
 
 ```powershell
-python tests/smoke_api.py --url http://192.168.0.79
+python tests/smoke_api.py --url http://172.20.10.2
 ```
 
 ## Abgedeckte Testfälle
@@ -84,7 +84,7 @@ Die Tests verwenden `POST /config` und ändern das Messintervall damit vorüberg
 Falls der Pico W dabei nicht erreichbar ist, wird ein Fehler angezeigt. Das aktuelle Intervall lässt sich manuell prüfen:
 
 ```powershell
-python tests/smoke_api.py --url http://192.168.0.79 --get-interval
+python tests/smoke_api.py --url http://172.20.10.2 --get-interval
 ```
 
 Die aktuelle Firmware übernimmt Änderungen im **RAM** und speichert sie nicht dauerhaft in `settings.toml`.
