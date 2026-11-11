@@ -126,7 +126,9 @@ class MqttClient:
     """Kapselt MiniMQTT, Telemetrie und Last Will."""
 
     def __init__(self, config, pool):
-        self.topic = config["telemetry_topic"]
+        self.telemetry_topic = config["telemetry_topic"].rstrip("/")
+        self.temperature_topic = self.telemetry_topic + "/temperature/state"
+        self.humidity_topic = self.telemetry_topic + "/humidity/state"
         self.status_topic = config["status_topic"]
         self.connected = False
         self.client = MQTT.MQTT(
@@ -160,19 +162,47 @@ class MqttClient:
         except (OSError, RuntimeError, MQTT.MMQTTException):
             return False
 
+    
     def publish_telemetry(self, data):
-        payload = {
-            "timestamp": get_timestamp(),
+        # Gemeinsamer UTC-Zeitstempel für beide Messwerte
+        timestamp = get_timestamp()
+
+        # Temperatur-Payload
+        temperature_payload = {
+            "timestamp": timestamp,
             "value": data["temperature"],
             "unit": "°C",
         }
+
+        # Luftfeuchtigkeits-Payload
+        humidity_payload = {
+            "timestamp": timestamp,
+            "value": data["humidity"],
+            "unit": "%",
+        }
+
         try:
-            self.client.publish(self.topic, json.dumps(payload))
+            # Temperatur an den MQTT-Broker senden
+            self.client.publish(
+                self.temperature_topic,
+                json.dumps(temperature_payload)
+            )
+
+            # Luftfeuchtigkeit an den MQTT-Broker senden
+            self.client.publish(
+                self.humidity_topic,
+                json.dumps(humidity_payload)
+            )
+
         except (OSError, RuntimeError, MQTT.MMQTTException):
             self.connected = False
             raise
-        print("MQTT gesendet:", json.dumps(payload))
-        return payload
+
+        print("MQTT Temperatur:", json.dumps(temperature_payload))
+        print("MQTT Humidity:", json.dumps(humidity_payload))
+
+        # Für die bestehende HTTP-API /status
+        return temperature_payload
 
     def publish_status(self, status):
         payload = json.dumps({"status": status})
