@@ -1,6 +1,7 @@
 # Normalisiert Statusnachrichten aus iiot/group/+/status.
 # Akzeptiert {"status": "ok"}, "ok" (JSON-String) und ok (Rohtext).
-# Alles andere wird als "unknown" gespeichert statt verworfen.
+# Alles andere wird als "unknown" gespeichert statt verworfen,
+# nur leere Nachrichten werden ignoriert.
 
 load("json.star", "json")
 
@@ -10,6 +11,11 @@ MAX_RAW = 200
 
 def apply(metric):
     raw = str(metric.fields.pop("value", "")).strip()
+
+    # Leere Nachricht = retained Status wurde geloescht (z.B. Simulation
+    # beendet), kein neuer Status
+    if raw == "":
+        return None
 
     data = json.decode(raw, None)
     if type(data) == "dict":

@@ -25,6 +25,25 @@ Stoppen mit `docker compose down`. Mit `docker compose down -v` werden zusätzli
 
 Hinweis: InfluxDB übernimmt Benutzer, Organisation, Bucket und Token nur beim **ersten** Start. Wer diese Werte in der `.env` später ändert, muss die Volumes mit `docker compose down -v` zurücksetzen.
 
+## Sensor-Simulation
+
+Für Tests ohne echte Geräte simuliert [`simulator/simulate.py`](simulator/simulate.py) fünf Sensoren auf dem Kurs-Broker:
+
+| Gruppe (Topic `iiot/group/<gruppe>/...`) | Temperatur | Luftfeuchte |
+|---|---|---|
+| `test-group6-sim-1` … `test-group6-sim-3` | ja | ja |
+| `test-group6-sim-4`, `test-group6-sim-5` | ja | nein |
+
+Die Simulation läuft nur, wenn sie manuell gestartet wird (Compose-Profil `sim`). `docker compose up -d` startet sie nicht mit.
+
+```bash
+docker compose up -d --build simulator   # starten
+docker compose logs -f simulator         # gesendete Werte ansehen
+docker compose stop simulator            # beenden
+```
+
+Jeder simulierte Sensor meldet beim Start `{"status": "ok"}` und hinterlegt `{"status": "offline"}` als Last Will. Beim Beenden melden die Sensoren `offline` und löschen danach ihren retained Status, damit auf dem geteilten Broker nichts liegen bleibt. Präfix und Sendeintervall lassen sich in der `.env` über `SIM_PREFIX` und `SIM_INTERVAL` ändern.
+
 ## Nutzung
 
 | Dienst   | URL                     | Login                                                     |
@@ -60,6 +79,7 @@ Die Luftfeuchte ist eine eigene Erweiterung der Kursspezifikation (Topic `iiot/g
 ## Dateien
 
 - [`docker-compose.yml`](docker-compose.yml): Dienste, Ports, Volumes
+- [`simulator/`](simulator/): Sensor-Simulation (Python, `paho-mqtt`)
 - [`.env.example`](.env.example): Vorlage für Zugangsdaten
 - [`telegraf/telegraf.conf`](telegraf/telegraf.conf): MQTT-Abonnements und InfluxDB-Ausgabe
 - [`grafana/provisioning/`](grafana/provisioning/): Datenquelle und Dashboard-Provider

@@ -67,6 +67,21 @@ services:
       - ./grafana/provisioning:/etc/grafana/provisioning:ro
       - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
 
+  # Sensor-Simulation, startet nur manuell:
+  #   docker compose up -d --build simulator   /   docker compose stop simulator
+  simulator:
+    build: ./simulator
+    profiles: ["sim"]
+    restart: "no"
+    stop_grace_period: 15s
+    environment:
+      MQTT_HOST: ${MQTT_HOST}
+      MQTT_PORT: ${MQTT_PORT:-1883}
+      MQTT_USERNAME: ${MQTT_USERNAME}
+      MQTT_PASSWORD: ${MQTT_PASSWORD}
+      SIM_PREFIX: ${SIM_PREFIX:-test-group6-sim}
+      SIM_INTERVAL: ${SIM_INTERVAL:-10}
+
 volumes:
   influxdb-data:
   influxdb-config:
