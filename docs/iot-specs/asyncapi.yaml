@@ -32,6 +32,22 @@ channels:
         payload:
           $ref: '#/components/schemas/TemperatureReading'
 
+  iiot/group/{group}/sensor/humidity/state:
+    description: |
+      Publiziert Luftfeuchtemessungen einer Gruppe (Erweiterung, gleiches Schema wie Temperatur)
+    parameters:
+      group:
+        $ref: '#/components/parameters/group'
+    publish:
+      operationId: publishHumidity
+      summary: Sendet Luftfeuchtedaten
+      message:
+        messageId: humidityMessage
+        name: HumidityMessage
+        title: Luftfeuchte-Daten
+        payload:
+          $ref: '#/components/schemas/HumidityReading'
+
   iiot/group/{group}/status:
     description: |
       Status des Geräts einer Gruppe, immer als JSON. Nach dem Verbindungsaufbau wird
@@ -99,6 +115,34 @@ components:
           example: "°C"
         status:
           $ref: '#/components/schemas/Status'
+
+    HumidityReading:
+      type: object
+      required:
+        - timestamp
+        - value
+        - unit
+      properties:
+        timestamp:
+          type: string
+          format: date-time
+          description: Zeitpunkt der Messung (ISO8601)
+          example: "2025-08-28T10:00:00Z"
+        sensor_id:
+          type: string
+          description: Eindeutige ID des Sensors aus der Konfiguration
+          example: "temp-101"
+        value:
+          type: number
+          description: Gemessene relative Luftfeuchtigkeit
+          minimum: 0
+          maximum: 100
+          example: 61
+        unit:
+          type: string
+          description: Einheit der Messung
+          enum: ['%']
+          example: "%"
 
     DeviceStatus:
       type: object

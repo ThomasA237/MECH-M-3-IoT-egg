@@ -6,7 +6,10 @@ authors = [
     {name = "jhumci", email = "julian.huber@mci.edu"},
     {name = "Christoph Egger"},
 ]
-dependencies = ["quarto-cli>=1.5"]
+dependencies = [
+    "paho-mqtt>=2.2.0",
+    "quarto-cli>=1.5",
+]
 requires-python = "==3.12.*"
 readme = "README.md"
 license = {text = "MIT"}
