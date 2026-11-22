@@ -1,33 +1,153 @@
 # Dokumentation
 
 :::{.callout-tip}
-## Hinweis
-Der Einstieg in Ihre Dokumentation ist das `README.md` Ihres Forks, siehe [Abgabe](../index.qmd#abgabe). Hier ist optional Platz für Details, auf die das README verlinkt. Dieses Dokument ist in [Quarto](https://quarto.org/) geschrieben und wird automatisch in HTML umgewandelt. Da Quarto ein Superset von Markdown ist, können Sie einfach wie gewohnt arbeiten aber auch weitere Funktionen nutzen. Zudem ist ein Strukturvorschlag gegeben, dieser muss aber nicht unbedingt eingehalten werden. Wichtig ist, dass die Dokumentation klar und verständlich ist und die relevanten Files auch als Link eingebunden werden.
+## Einstieg
+Der Einstieg ist das [README](https://github.com/ThomasA237/MECH-M-3-IoT-egg#readme) des Repositories mit allen Schritten zur Inbetriebnahme. Diese Seite ergänzt es um Hintergründe, Fehlersuche und Details für Entwickler.
 :::
 
 ## Zusammenfassung der Aufgabenstellung und Ziele
 
+Der Frühstücksflockenhersteller yourmuesli.at hat Qualitätsprobleme beim Abfüllen, die auf Temperatur und Luftfeuchtigkeit zurückgehen. Ziel ist eine günstige, schnell ausrollbare Lösung, mit der die Qualitätssicherung die Umgebungsbedingungen aller Standorte auf einem Dashboard sieht, auch auf dem iPhone. Die Geräte werden zentral vorbereitet und vor Ort von Nicht-Fachleuten nur noch ins bestehende WLAN eingebunden.
+
+Umgesetzt in drei Teilen:
+
+| Teil | Ergebnis |
+|---|---|
+| Termin 1 – Gerät | Pico W mit DHT11 sendet Temperatur und Luftfeuchte per MQTT, Status mit Last Will |
+| Termin 2 – Netzwerk | HTTP-API (`/config`, `/status`) nach `openapi.yaml`, Tests mit Schemathesis, Hinweise für die IT |
+| Termin 3 – Cloud | Telegraf, InfluxDB und Grafana in Docker, nimmt alle Gruppen automatisch auf |
+
+```{mermaid}
+flowchart LR
+  P["Pico W + DHT11<br/>code.py"] -- "MQTT, TCP 1883<br/>temperature / humidity / status" --> B["Kurs-Broker<br/>158.180.44.197"]
+  S["Sensor-Simulation<br/>(optional)"] -- MQTT --> B
+  B -- "iiot/group/+/..." --> T[Telegraf]
+  T --> I[(InfluxDB 2)]
+  I --> G[Grafana :3000]
+  G --> U["Browser / iPhone"]
+  L["Laptop im lokalen Netz"] -- "HTTP :80<br/>/config, /status" --> P
+```
 
 ## Anleitung für User
 
 ### Konfiguration und Start des Mikrocontrollers
 
+Die vollständige Schritt-für-Schritt-Anleitung (Verkabelung, CircuitPython, Bibliotheken, `settings.toml`) steht im [README](https://github.com/ThomasA237/MECH-M-3-IoT-egg#mikrocontroller-einrichten). Vor Ort muss in der Regel nur die `settings.toml` auf dem Laufwerk `CIRCUITPY` angepasst werden:
+
+```toml
+wifi_ssid = "<WLAN-Name>"
+wifi_password = "<WLAN-Passwort>"
+```
+
+Nach dem Speichern startet das Programm automatisch neu. Alle Schlüssel sind im README beschrieben.
+
+**Ablauf beim Start:** Konfiguration laden → WLAN verbinden (3 Versuche) → Uhrzeit per NTP holen → MQTT verbinden und `{"status": "ok"}` senden → HTTP-Server auf Port 80 starten → im eingestellten Intervall messen und senden. Bricht WLAN oder MQTT im Betrieb ab, verbindet sich das Gerät selbstständig neu.
+
+**Fehlersuche** (Meldungen in der seriellen Konsole, 115200 Baud):
+
+| Meldung / Beobachtung | Ursache | Abhilfe |
+|---|---|---|
+| `WLAN-Fehler: ...`, danach `WLAN-Verbindung fehlgeschlagen` | SSID oder Passwort falsch, 5-GHz- oder Enterprise-WLAN | Zugangsdaten prüfen, 2,4-GHz-WLAN mit WPA2-Personal verwenden |
+| Absturz direkt nach `WLAN verbunden` | NTP nicht erreichbar | UDP 123 und DNS freigeben (siehe unten) |
+| `MQTT-Wiederverbindung fehlgeschlagen` | Broker nicht erreichbar oder Passwort falsch | TCP 1883 zu `158.180.44.197` freigeben, `mqtt_password` prüfen |
+| `DHT11-Messfehler`, Status `error`, LED aus | Sensor falsch verkabelt oder Widerstand fehlt | Verkabelung und `sensor_pin` prüfen. Einzelne Fehlmessungen sind beim DHT11 normal. |
+| `ImportError` | Bibliothek fehlt in `CIRCUITPY/lib/` | Bibliotheken laut README kopieren, Bundle-Version passend zu CircuitPython |
+| HTTP-API nicht erreichbar | Laptop in anderem Netz oder Client-Isolation | Gleiches WLAN verwenden, IP aus der Konsole nehmen |
+
 ### Empfehlungen für die IT-Abteilung
 
+Die Geräte sollen in bestehende WLANs eingebunden werden, die durch eine externe Firewall mit Whitelist geschützt sind. Damit die Daten beim Broker ankommen, muss die IT-Abteilung Folgendes beachten.
+
+**WLAN-Anforderungen:**
+
+- 2,4 GHz (der Pico W unterstützt kein 5 GHz), WPA2-Personal mit Passwort. WPA2-Enterprise (802.1X) und Captive Portals werden nicht unterstützt.
+- Eine DHCP-Reservierung für die MAC-Adresse des Pico, damit die HTTP-API immer unter derselben IP erreichbar ist.
+- Am besten ein eigenes IoT-VLAN bzw. eine eigene SSID, getrennt vom Produktions- und Büronetz.
+
+**Freigaben für den Pico W:**
+
+| Richtung | Ziel | Protokoll / Port | Zweck |
+|---|---|---|---|
+| ausgehend | `158.180.44.197` | TCP 1883 | MQTT (Messwerte, Status, Last Will). Ohne diese Freigabe kommen keine Daten an. |
+| ausgehend | `0.adafruit.pool.ntp.org` | UDP 123 | Uhrzeit beim Start, Pflicht. Der Pool wechselt die IP-Adressen, die Freigabe muss daher per Hostname/FQDN erfolgen. Alternativ einen internen NTP-Server bereitstellen (erfordert eine Anpassung der Firmware). |
+| ausgehend | DNS-Server des Netzes | UDP/TCP 53 | Auflösung des NTP-Hostnamens |
+| lokal | DHCP-Server | UDP 67/68 | IP-Adresse |
+| eingehend | Pico W | TCP 80 | HTTP-API, nur aus dem Verwaltungsnetz erlauben |
+
+Eine Deep Packet Inspection oder ein Proxy darf die MQTT-Verbindung nicht unterbrechen, da sie dauerhaft offen bleibt (Keep-Alive alle 30 s). Bricht die Verbindung ab, meldet der Broker nach kurzer Zeit `offline`.
+
+**Freigaben für den Docker-Host** (Rechner mit Telegraf, InfluxDB, Grafana):
+
+| Richtung | Ziel | Protokoll / Port | Zweck |
+|---|---|---|---|
+| ausgehend | `158.180.44.197` | TCP 1883 | Telegraf liest die Daten aller Gruppen |
+| ausgehend | Docker Hub, PyPI | TCP 443 | Nur bei Installation und Updates (Images, `paho-mqtt` für die Simulation) |
+| eingehend | Docker-Host | TCP 3000 | Grafana, nur aus Netzen, in denen das Dashboard angesehen wird |
+| eingehend | – | TCP 8086 | InfluxDB, von außen nicht nötig, Freigabe vermeiden |
+
+**Fernzugriff auf die HTTP-API:**
+
+Die HTTP-API ist nur im lokalen Netz erreichbar. Um Status und Intervall auch aus der Zentrale in Innsbruck abzurufen, gibt es mehrere Möglichkeiten:
+
+| Variante | Vorteile | Gefahren und Hindernisse |
+|---|---|---|
+| Portweiterleitung im Router/der Firewall | einfach | API ist unverschlüsselt und ohne Anmeldung: jeder im Internet kann das Intervall ändern oder das Gerät mit Anfragen blockieren. Viele Standorte haben keine öffentliche IPv4-Adresse (CGNAT). Die IT wird eingehende Freigaben ins Produktionsnetz meist ablehnen. |
+| VPN in das Standortnetz (Site-to-Site oder Client-VPN) | verschlüsselt, Zugriff nur für Berechtigte, API bleibt unverändert | Erfordert VPN-Infrastruktur und Abstimmung mit jeder lokalen IT. Wer im VPN ist, hat Zugriff auf das ganze Netz, sofern nicht zusätzlich gefiltert wird. |
+| Gateway/Reverse Proxy vor Ort (z.B. kleiner Linux-Rechner) | TLS und Anmeldung möglich, Pico bleibt einfach | zusätzliche Hardware, die gewartet werden muss |
+| Konfiguration über MQTT (Gerät abonniert ein Config-Topic) | keine eingehende Verbindung nötig, nutzt die bereits freigegebene Verbindung zum Broker | Firmware-Erweiterung nötig. Der Broker muss abgesichert sein (TLS, Zugangsdaten je Gerät), sonst kann jeder Teilnehmer Geräte umkonfigurieren. |
+
+Die Empfehlung ist die Konfiguration über MQTT für den Regelbetrieb, weil sie ohne eingehende Freigaben auskommt, und ein VPN für Wartungszugriffe. Eine direkte Portweiterleitung auf den Pico sollte nicht eingerichtet werden.
 
 ## Anleitung für Developer
 
-- Das repository ist als `pdm`-Projekt strukturiert. Nutzen Sie `pdm install`, um die Abhängigkeiten zu installieren.
-- Für Dokumentation wurde [Quarto](https://quarto.org/) verwendet, die `quarto-cli`-Befehle sind ebenfalls in der `pdm`-Umgebung verfügbar.
-    - Führen Sie `quarto preview` im `docs`-Verzeichnis aus, um die Dokumentation lokal zu starten.
-    - Zudem existiert eine github-action zur automatischen Erstellung der Dokumentation, die diese auch automatisch als Website bereitstellt, wenn Sie in den Main-Branch pushen. Wenn sie diese entfernen wollen, müssen sie die Datei `.github/workflows/publish.yml` anpassen.
+- Das Repository ist ein `pdm`-Projekt (Python 3.12). `pdm install` installiert die Abhängigkeiten (`quarto-cli`, `paho-mqtt`), `pdm install -G test` zusätzlich Schemathesis für die API-Tests.
+- Die Dokumentation ist in [Quarto](https://quarto.org/) geschrieben. Im Hauptverzeichnis startet `pdm run quarto preview` eine lokale Vorschau.
+- Bei jedem Push auf `main` baut eine GitHub Action ([`.github/workflows/publish.yml`](https://github.com/ThomasA237/MECH-M-3-IoT-egg/blob/main/.github/workflows/publish.yml)) die Website und veröffentlicht sie auf GitHub Pages.
 
 ### Struktur des Projekts
 
-- `docs/`: Quarto Dokumentation
-- `docs/iot-specs`: Spezifikationen für IoT-Geräte
-- `docs/images`: Bilder für die Dokumentation
-- `src/esp32_firmware`: Quellcode mit Ansätzen für die Firmware-Entwicklung
-- `src/raspi_firmware`: Quellcode mit Ansätzen für die Firmware-Entwicklung
-- `src/cloud`: Ihre containerisierte Lösung aus Termin 3 (von Ihnen anzulegen)
-- `tests/`: Ihre Testfälle für die HTTP-API aus Termin 2 (von Ihnen anzulegen)
+- `docs/`: Quarto-Dokumentation (Aufgabenstellung und diese Seite)
+- `docs/iot-specs/`: Spezifikationen: `asyncapi.yaml` (MQTT), `openapi.yaml` (HTTP), `conventions.md`
+- `docs/images/`: Bilder für die Dokumentation
+- `src/raspi_firmware/`: Firmware für den Pico W (`code.py`, `lib/toml.py`)
+- `src/esp32_firmware/`: ESP32-Vorlage des Kurses, nicht verwendet
+- `src/cloud/`: Containerlösung (`docker-compose.yml`, `telegraf/`, `grafana/`, `simulator/`), siehe [Container-Anleitung](https://github.com/ThomasA237/MECH-M-3-IoT-egg/blob/main/src/cloud/README.md)
+- `tests/`: Testfälle für die HTTP-API, siehe [Test-Anleitung](https://github.com/ThomasA237/MECH-M-3-IoT-egg/blob/main/tests/README.md)
+
+### Firmware
+
+[`code.py`](https://github.com/ThomasA237/MECH-M-3-IoT-egg/blob/main/src/raspi_firmware/code.py) ist in Klassen gegliedert:
+
+| Klasse | Aufgabe |
+|---|---|
+| `ConfigManager` | lädt `settings.toml`, verwaltet das Intervall im RAM (Minimum 2 s) |
+| `NetworkManager` | WLAN-Verbindung mit Wiederholungen, Socket-Pool |
+| `Sensor` | liest den DHT11, fängt Fehlmessungen ab |
+| `MqttClient` | MiniMQTT mit Last Will, sendet Messwerte und Status |
+| `WebServer` | nicht blockierender HTTP-Server mit `socketpool`, Statuscodes 200/400/404/405 |
+
+Die Hauptschleife blockiert nie länger als nötig: Der HTTP-Server arbeitet nicht blockierend, `mqtt.loop()` hat ein kurzes Timeout, und Verbindungsabbrüche werden mit Wartezeiten zwischen den Versuchen behandelt.
+
+### MQTT-Schnittstelle
+
+Laut [`asyncapi.yaml`](https://github.com/ThomasA237/MECH-M-3-IoT-egg/blob/main/docs/iot-specs/asyncapi.yaml):
+
+| Topic | Payload | Hinweis |
+|---|---|---|
+| `iiot/group/<gruppe>/sensor/temperature/state` | `{"timestamp": "2026-11-22T10:00:00Z", "value": 22.0, "unit": "°C"}` | Kursvorgabe |
+| `iiot/group/<gruppe>/sensor/humidity/state` | `{"timestamp": "2026-11-22T10:00:00Z", "value": 45, "unit": "%"}` | eigene Erweiterung, gleiches Schema |
+| `iiot/group/<gruppe>/status` | `{"status": "ok"}`, `"error"`, `"offline"` | retained, QoS 1, `offline` als Last Will |
+
+Die Luftfeuchte ist nicht Teil der Kursvorgabe. Wir haben sie ergänzt, weil die Storyline sie als kritischen Einflussfaktor nennt. Als eigenes Topic bleibt das Temperatur-Topic unverändert, und andere Gruppen sind nicht betroffen.
+
+### Containerlösung
+
+- **Telegraf** ([`telegraf.conf`](https://github.com/ThomasA237/MECH-M-3-IoT-egg/blob/main/src/cloud/telegraf/telegraf.conf)) abonniert drei Topic-Muster mit `+`-Wildcard. Der Gruppenname wird aus dem Topic als Tag `group` übernommen. Als Zeitstempel dient die Empfangszeit, weil Geräte anderer Gruppen ohne NTP falsche Zeiten senden. Ungültige Messwerte werden geloggt und verworfen.
+- **Status-Normalisierung** ([`status.star`](https://github.com/ThomasA237/MECH-M-3-IoT-egg/blob/main/src/cloud/telegraf/status.star)): Auf dem geteilten Broker liegen auch abweichende Statusnachrichten. Akzeptiert werden `{"status": "ok"}`, `"ok"` und `ok` in beliebiger Schreibweise, alles andere wird als `unknown` gespeichert. Leere Nachrichten (gelöschter retained Status) werden ignoriert.
+- **InfluxDB** speichert die Measurements `temperature`, `humidity` und `device_status` im Bucket `iiot`. Benutzer, Organisation, Bucket und Token werden beim ersten Start aus der `.env` angelegt.
+- **Grafana** wird vollständig per Provisioning eingerichtet (Datenquelle und Dashboard aus [`grafana/`](https://github.com/ThomasA237/MECH-M-3-IoT-egg/tree/main/src/cloud/grafana)). Änderungen am Dashboard werden in `grafana/dashboards/iiot.json` gemacht und mit `docker compose restart grafana` übernommen.
+- **Sensor-Simulation** ([`simulator/simulate.py`](https://github.com/ThomasA237/MECH-M-3-IoT-egg/blob/main/src/cloud/simulator/simulate.py)): 5 Sensoren mit eigener MQTT-Verbindung und Last Will. Sie läuft im Compose-Profil `sim` und startet nur mit `docker compose up -d --build simulator`. Beim Beenden melden die Sensoren `offline` und löschen ihren retained Status.
+
+### Tests
+
+Die HTTP-API wird mit eigenen Smoke-Tests ([`smoke_api.py`](https://github.com/ThomasA237/MECH-M-3-IoT-egg/blob/main/tests/smoke_api.py), nur Standardbibliothek) und mit Schemathesis gegen `openapi.yaml` geprüft. [`run_api_tests.ps1`](https://github.com/ThomasA237/MECH-M-3-IoT-egg/blob/main/tests/run_api_tests.ps1) führt beides aus und stellt das Intervall danach wieder her. Aufruf und Testumfang: [Test-Anleitung](https://github.com/ThomasA237/MECH-M-3-IoT-egg/blob/main/tests/README.md).
