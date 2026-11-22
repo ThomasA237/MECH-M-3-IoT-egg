@@ -8,8 +8,8 @@ Details zu einzelnen Punkten stehen in der [ausführlichen Dokumentation](docs/D
 
 | | |
 |---|---|
-| **Mitglieder** | `<TODO: Vorname Nachname>`, `<TODO: Vorname Nachname>` |
-| **MQTT-Gruppenname** | `iiot/group/<TODO: nachname1-nachname2>` |
+| **Mitglieder** | Thomas Adler, Thomas Neumeier |
+| **MQTT-Gruppenname** | `iiot/group/adler-neumeier |
 | **Repository** | <https://github.com/ThomasA237/MECH-M-3-IoT-egg> |
 
 ## Video
@@ -30,7 +30,6 @@ Zusätzlich umgesetzt:
 Bekannte Einschränkungen:
 - `POST /config` ändert das Intervall nur im RAM. Nach einem Neustart gilt wieder der Wert aus der `settings.toml`, weil `CIRCUITPY` für das Programm schreibgeschützt ist.
 - Der Pico W braucht beim Start Internetzugang für NTP (Zeitstempel in UTC). Ohne NTP startet die Firmware nicht.
-- `<TODO: weitere Punkte, die nicht funktionieren>`
 
 ## Überblick
 
@@ -84,7 +83,7 @@ Der 10 kΩ-Widerstand kommt zwischen VCC und DATA des DHT11. Bei einem DHT11-Mod
 
 ### `settings.toml` ausfüllen und ins WLAN einbinden
 
-Im Hauptverzeichnis von `CIRCUITPY` eine `settings.toml` anlegen (`<TODO: Pfad zur Vorlage mit Platzhaltern>`) und ausfüllen:
+Im Hauptverzeichnis von `CIRCUITPY` eine `settings.toml` anlegen und ausfüllen:
 
 | Schlüssel | Bedeutung |
 |---|---|
