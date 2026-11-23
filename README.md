@@ -81,21 +81,39 @@ Der 10 kΩ-Widerstand kommt zwischen VCC und DATA des DHT11. Bei einem DHT11-Mod
 2. **Bibliotheken kopieren:** Aus dem [Adafruit CircuitPython Bundle](https://circuitpython.org/libraries) (gleiche Hauptversion wie CircuitPython) nach `CIRCUITPY/lib/` kopieren: `adafruit_dht.mpy`, `adafruit_minimqtt/`, `adafruit_connection_manager.mpy`, `adafruit_ticks.mpy`, `adafruit_ntp.mpy`. Dazu [`src/raspi_firmware/lib/toml.py`](src/raspi_firmware/lib/toml.py) aus diesem Repository.
 3. **Programm kopieren:** [`src/raspi_firmware/code.py`](src/raspi_firmware/code.py) in das Hauptverzeichnis von `CIRCUITPY` kopieren.
 
-### `settings.toml` ausfüllen und ins WLAN einbinden
+### `settings.toml` konfigurieren und WLAN-Verbindung herstellen
 
-Im Hauptverzeichnis von `CIRCUITPY` eine `settings.toml` anlegen und ausfüllen:
+Die Konfiguration des Raspberry Pi Pico W erfolgt über die Datei `settings.toml`. Eine Vorlage mit allen benötigten Einstellungen befindet sich unter `src/raspi_firmware/settings.toml.template`.
 
-| Schlüssel | Bedeutung |
-|---|---|
-| `device_id` | eindeutiger Gerätename, z.B. `yourmuesli-innsbruck-01` |
-| `wifi_ssid`, `wifi_password` | Zugangsdaten des bestehenden WLANs am Standort |
-| `broker_address`, `broker_port`, `mqtt_username`, `mqtt_password` | Kurs-Broker, Passwort aus der Vorlesung |
-| `telemetry_topic` | `iiot/group/<gruppe>/sensor` (ohne Messgröße) |
-| `status_topic` | `iiot/group/<gruppe>/status` |
-| `reading_interval_seconds` | Sendeintervall in Sekunden, mindestens 2 |
-| `sensor_pin` | GPIO des Datenpins, `22` bei der Verkabelung oben |
+**1. Konfigurationsdatei erstellen**
 
-Das WLAN muss **2,4 GHz** und **WPA2-Personal** (Passwort) verwenden. 5 GHz, WPA2-Enterprise und WLANs mit Anmeldeseite (Captive Portal) unterstützt der Pico W nicht. Die Firewall des Standorts muss die unter [Hinweise für die IT-Abteilung](#hinweise-für-die-it-abteilung) genannten Verbindungen erlauben.
+Die Vorlage im Hauptverzeichnis des Repositories kopieren:
+
+```powershell
+Copy-Item src/raspi_firmware/settings.toml.template src/raspi_firmware/settings.toml
+```
+
+**2. Einstellungen anpassen**
+
+In der erstellten `settings.toml` müssen insbesondere folgende Angaben eingetragen werden:
+
+- **WLAN:** Netzwerkname (`wifi_ssid`) und Passwort (`wifi_password`)
+- **MQTT-Broker:** Adresse (`broker_address`), Benutzername (`mqtt_username`) und Passwort (`mqtt_password`)
+- **Messintervall:** `reading_interval_seconds` (standardmäßig 60 Sekunden)
+
+Die MQTT-Topics sind für Gruppe 6 bereits vorkonfiguriert.
+
+**3. Konfiguration auf den Pico W übertragen**
+
+Die ausgefüllte `settings.toml` wird zusammen mit `code.py` in das Hauptverzeichnis des Laufwerks `CIRCUITPY` kopiert. Der Mikrocontroller liest die Einstellungen beim Programmstart automatisch ein.
+
+**4. Netzwerkvoraussetzungen**
+
+Das WLAN muss **2,4 GHz** und **WPA2-Personal** unterstützen. Reine 5-GHz-Netze, WPA2-Enterprise und Netzwerke mit Anmeldeseite (Captive Portal) werden von der verwendeten Firmware nicht unterstützt.
+
+Die Firewall des Standorts muss die unter [Hinweise für die IT-Abteilung](#hinweise-für-die-it-abteilung) beschriebenen Verbindungen zulassen.
+
+**Hinweis zur Sicherheit:** Die persönliche `settings.toml` enthält Zugangsdaten und wird deshalb über `.gitignore` vom Repository ausgeschlossen. Im Repository wird ausschließlich die Vorlage mit Platzhaltern bereitgestellt.
 
 ### Prüfen, ob es funktioniert
 

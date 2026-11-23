@@ -1,0 +1,43 @@
+# Raspberry Pi Pico W – IIoT-Umgebungsueberwachung (Gruppe 6)
+# Vorlage fuer die lokale Konfiguration der CircuitPython-Firmware.
+#
+# Einrichtung:
+# 1. Diese Datei als "settings.toml" kopieren.
+# 2. WLAN- und MQTT-Zugangsdaten sowie Broker-Adresse eintragen.
+# 3. "code.py", "settings.toml" und die erforderlichen Bibliotheken
+#    auf das CIRCUITPY-Laufwerk kopieren.
+
+
+# --- Geraet ---
+# Eindeutige MQTT-Client-ID; nicht gleichzeitig fuer mehrere Picos verwenden.
+device_id = "group6-pico-01"
+
+# Optionale Metadaten (von der aktuellen Firmware nicht ausgewertet).
+names = "adler-neumeier"
+location = "Standort eintragen"
+
+# --- WLAN ---
+# Pico W und Laptop muessen fuer die lokale HTTP-API erreichbar sein.
+wifi_ssid = "WLAN_NAME_EINTRAGEN"
+wifi_password = "WLAN_PASSWORT_EINTRAGEN"
+
+# --- MQTT-Broker ---
+# Broker-Hostname oder IP-Adresse und Port der LV eintragen.
+broker_address = "BROKER_ADRESSE_EINTRAGEN"
+broker_port = 1883
+mqtt_username = "MQTT_BENUTZERNAME_EINTRAGEN"
+mqtt_password = "MQTT_PASSWORT_EINTRAGEN"
+
+# --- MQTT-Topics ---
+# Die Firmware ergaenzt an telemetry_topic automatisch:
+# /temperature/state und /humidity/state.
+telemetry_topic = "iiot/group/adler-neumeier/sensor"
+status_topic = "iiot/group/adler-neumeier/status"
+
+# --- Sensor und Abtastintervall ---
+# DHT11: DATA an GP22, 3V3 an VCC, GND an GND.
+# Ein 10-kOhm-Pull-up zwischen DATA und 3V3 ist beim nackten DHT11 noetig.
+sensor_pin = 22
+
+# Intervall in Sekunden; die Firmware akzeptiert Werte ab 2.
+reading_interval_seconds = 60
