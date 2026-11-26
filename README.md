@@ -1,4 +1,4 @@
-# IIoT-Umgebungsüberwachung – Gruppe 6
+# IIoT – Gruppe 6
 
 Temperatur- und Luftfeuchteüberwachung für die Produktionsstandorte von yourmuesli.at: Ein Raspberry Pi Pico W mit DHT11 sendet Messwerte per MQTT an den Kurs-Broker. Eine Containerlösung aus Telegraf, InfluxDB und Grafana speichert die Daten aller Gruppen und zeigt sie in einem Dashboard.
 
@@ -14,7 +14,7 @@ Details zu einzelnen Punkten stehen in der [ausführlichen Dokumentation](docs/D
 
 ## Video
 
-`<TODO: Link zur Bildschirmaufnahme (z.B. nicht gelistet auf YouTube)>`
+[Youtube Link](https://youtu.be/DGzvi2c1wa4)
 
 ## Erreichter Stand
 
