@@ -14,10 +14,10 @@ Sensoren ──MQTT──▶ Kurs-Broker ──▶ Telegraf ──▶ InfluxDB �
 Voraussetzung: [Docker Desktop](https://www.docker.com/products/docker-desktop/) bzw. Docker Engine mit Compose-Plugin.
 
 ```bash
-git clone <url-des-forks>
-cd MECH-M-3-IIoT/src/cloud
+git clone https://github.com/ThomasA237/MECH-M-3-IoT-egg.git
+cd MECH-M-3-IoT-egg/src/cloud
 cp .env.example .env      # Windows: copy .env.example .env
-# .env öffnen: MQTT_PASSWORD, INFLUX_PASSWORD, INFLUX_TOKEN, GRAFANA_ADMIN_PASSWORD setzen
+# .env öffnen: MQTT_HOST, MQTT_USERNAME, MQTT_PASSWORD, INFLUX_PASSWORD, INFLUX_TOKEN, GRAFANA_ADMIN_PASSWORD setzen
 docker compose up -d
 ```
 
@@ -31,8 +31,10 @@ Für Tests ohne echte Geräte simuliert [`simulator/simulate.py`](simulator/simu
 
 | Gruppe (Topic `iiot/group/<gruppe>/...`) | Temperatur | Luftfeuchte |
 |---|---|---|
-| `test-group6-sim-1` … `test-group6-sim-3` | ja | ja |
-| `test-group6-sim-4`, `test-group6-sim-5` | ja | nein |
+| `<SIM_PREFIX>-1` … `<SIM_PREFIX>-3` | ja | ja |
+| `<SIM_PREFIX>-4`, `<SIM_PREFIX>-5` | ja | nein |
+
+`SIM_PREFIX` ist in der `.env.example` auf `test-adler` gesetzt, die Gruppen heißen also `test-adler-1` … `test-adler-5`. Ohne Eintrag in der `.env` gilt `test-group6-sim`.
 
 Die Simulation läuft nur, wenn sie manuell gestartet wird (Compose-Profil `sim`). `docker compose up -d` startet sie nicht mit.
 
@@ -59,12 +61,12 @@ Das Dashboard *IIoT Sensoren* zeigt:
 - **Kennzahlen Temperatur / Luftfeuchte (Zeitraum):** Mittelwert, Minimum, Maximum und Anzahl der Messwerte je Gruppe
 - **Statusverlauf:** zeitlicher Verlauf von `ok`, `error`, `offline` je Gruppe
 
-Über die Auswahl *Gruppe* oben links lassen sich einzelne Gruppen filtern.
+Über die Auswahl *Gruppe* oben links lassen sich einzelne Gruppen filtern. Der Filter wirkt auf die Durchschnittswerte, Zeitreihen, Kennzahlen-Tabellen und den Statusverlauf. Die Gerätezahlen oben links und die Geräteübersicht zeigen immer alle Gruppen.
 
 ## Umgang mit fehlerhaften Nachrichten
 
 - **Temperatur und Luftfeuchte:** Payloads, die kein JSON sind oder kein numerisches `value` enthalten, verwirft Telegraf mit einer Meldung im Log (`docker compose logs telegraf`). Der Zeitstempel ist die Empfangszeit, da Geräte ohne NTP-Synchronisation falsche Zeiten senden.
-- **Status:** [`telegraf/status.star`](telegraf/status.star) akzeptiert `{"status": "ok"}`, `"ok"` und reinen Text `ok`, unabhängig von Groß- und Kleinschreibung. Alles andere wird als `unknown` gespeichert. Die Originalnachricht bleibt im Feld `raw` erhalten.
+- **Status:** [`telegraf/status.star`](telegraf/status.star) akzeptiert `{"status": "ok"}`, `"ok"` und reinen Text `ok`, unabhängig von Groß- und Kleinschreibung. Alles andere wird als `unknown` gespeichert. Die Originalnachricht bleibt im Feld `raw` erhalten. Leere Nachrichten (gelöschter retained Status) werden ignoriert.
 
 ## Datenmodell in InfluxDB
 
@@ -82,5 +84,6 @@ Die Luftfeuchte ist eine eigene Erweiterung der Kursspezifikation (Topic `iiot/g
 - [`simulator/`](simulator/): Sensor-Simulation (Python, `paho-mqtt`)
 - [`.env.example`](.env.example): Vorlage für Zugangsdaten
 - [`telegraf/telegraf.conf`](telegraf/telegraf.conf): MQTT-Abonnements und InfluxDB-Ausgabe
+- [`telegraf/status.star`](telegraf/status.star): Normalisierung der Statusnachrichten
 - [`grafana/provisioning/`](grafana/provisioning/): Datenquelle und Dashboard-Provider
 - [`grafana/dashboards/iiot.json`](grafana/dashboards/iiot.json): Dashboard

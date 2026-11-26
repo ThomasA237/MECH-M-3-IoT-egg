@@ -9,7 +9,7 @@ Details zu einzelnen Punkten stehen in der [ausführlichen Dokumentation](docs/D
 | | |
 |---|---|
 | **Mitglieder** | Thomas Adler, Thomas Neumeier |
-| **MQTT-Gruppenname** | `iiot/group/adler-neumeier |
+| **MQTT-Gruppenname** | `iiot/group/adler-neumeier` |
 | **Repository** | <https://github.com/ThomasA237/MECH-M-3-IoT-egg> |
 
 ## Video
@@ -126,6 +126,8 @@ Die Firewall des Standorts muss die unter [Hinweise für die IT-Abteilung](#hinw
    HTTP-Server gestartet: http://192.168.0.79/
    Temperatur: 22 °C
    Luftfeuchtigkeit: 45 %
+   MQTT Temperatur: {...}
+   MQTT Humidity: {...}
    ```
 2. **Onboard-LED:** leuchtet, solange MQTT verbunden ist und der Sensor gültige Werte liefert.
 3. **MQTT Explorer** mit dem Broker verbinden und `iiot/group/<gruppe>/#` beobachten: Messwerte erscheinen im eingestellten Intervall, der Status steht auf `{"status": "ok"}`. Nach dem Abstecken des Pico wechselt er nach kurzer Zeit auf `{"status": "offline"}`.
@@ -179,13 +181,13 @@ Details: [Container-Anleitung](src/cloud/README.md#sensor-simulation).
 
 Das Dashboard *IIoT Sensoren* öffnet sich als Startseite und aktualisiert sich alle 10 Sekunden:
 
-- **Kennzahlen oben:** bekannte Geräte, Geräte mit Status `ok`, aktive Geräte (Messwert < 10 min), Ø Temperatur und Ø Luftfeuchte der Auswahl
+- **Kennzahlen oben:** bekannte Geräte (letzte 30 Tage), Geräte mit Status `ok`, aktive Geräte (Messwert < 10 min), Ø Temperatur und Ø Luftfeuchte der Auswahl
 - **Temperatur** und **Luftfeuchte:** Zeitreihen je Gruppe mit letztem Wert, Mittelwert, Minimum und Maximum in der Legende
-- **Geräteübersicht:** je Gruppe letzter Status, Zeitpunkt der letzten Statusmeldung, letzte Temperatur und Luftfeuchte, Zeitpunkt des letzten Messwerts
+- **Geräteübersicht:** je Gruppe letzter Status, Zeitpunkt der letzten Statusmeldung, letzte Temperatur und Luftfeuchte, Zeitpunkt des letzten Temperaturmesswerts
 - **Kennzahlen Temperatur / Luftfeuchte:** Mittelwert, Minimum, Maximum und Anzahl der Messwerte je Gruppe im gewählten Zeitraum
 - **Statusverlauf:** `ok`, `error`, `offline` je Gruppe über die Zeit
 
-Über *Gruppe* oben links lassen sich einzelne Gruppen filtern, der Zeitraum wird oben rechts gewählt.
+Über *Gruppe* oben links lassen sich einzelne Gruppen filtern, der Zeitraum wird oben rechts gewählt. Der Filter wirkt auf die Durchschnittswerte, Zeitreihen, Kennzahlen-Tabellen und den Statusverlauf. Die Gerätezahlen oben links und die Geräteübersicht zeigen immer alle Gruppen.
 
 ## HTTP-API
 
